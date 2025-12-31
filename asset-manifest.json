@@ -1,12 +1,12 @@
 {
   "files": {
-    "main.css": "/web-player-music/static/css/main.cec6bc55.css",
-    "main.js": "/web-player-music/static/js/main.9841b161.js",
-    "static/js/27.514294b5.chunk.js": "/web-player-music/static/js/27.514294b5.chunk.js",
+    "main.css": "/web-player-music/static/css/main.1d85d172.css",
+    "main.js": "/web-player-music/static/js/main.84c0c078.js",
+    "static/js/814.5a59ad60.chunk.js": "/web-player-music/static/js/814.5a59ad60.chunk.js",
     "index.html": "/web-player-music/index.html"
   },
   "entrypoints": [
-    "static/css/main.cec6bc55.css",
-    "static/js/main.9841b161.js"
+    "static/css/main.1d85d172.css",
+    "static/js/main.84c0c078.js"
   ]
 }
