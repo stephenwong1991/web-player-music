@@ -1,7 +1,7 @@
 class AudioAnalyser {
   private audioCtx?: AudioContext;
   public analyser?: AnalyserNode;
-  public buffer?: Uint8Array;
+  public buffer?: Uint8Array<ArrayBuffer>;
 
   initAnalyser(): void {
     this.audioCtx = new AudioContext();

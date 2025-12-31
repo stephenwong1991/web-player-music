@@ -1,4 +1,5 @@
 import { ColorRGBObj } from "../../types";
+import { isSafari } from "../../utils";
 
 class WaveformEffect {
   // color
@@ -7,7 +8,7 @@ class WaveformEffect {
   private b = 70;
 
   // arc
-  private radius = Math.min(window.innerWidth - 100, 450);
+  private radius = Math.min(window.innerWidth, 450);
   private coverRadius = this.radius - 30;
   private rectWidth = 5; // 初始旋转角度
 
@@ -44,8 +45,35 @@ class WaveformEffect {
     };
   }
 
+  // 绘制圆角矩形（兼容 Safari）
+  private fillRoundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ): void {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   drawBlurBg(img: HTMLImageElement, ctx: CanvasRenderingContext2D): void {
     if (!img) {
+      return;
+    }
+
+    if (isSafari()) {
       return;
     }
 
@@ -90,7 +118,7 @@ class WaveformEffect {
 
   drawArcWaveform(ctx: CanvasRenderingContext2D, datas: Uint8Array): void {
     const len = datas.length;
-    const offset = Math.floor((len * 2) / 3);
+    const offset = Math.floor((len * 2) / 3.5);
     const waveformList = new Array(offset * 2);
 
     for (let i = 0; i < offset; i++) {
@@ -138,7 +166,7 @@ class WaveformEffect {
 
   drawArcLineWaveform(ctx: CanvasRenderingContext2D, datas: Uint8Array): void {
     const len = datas.length;
-    const offset = Math.floor((len * 2) / 3);
+    const offset = Math.floor((len * 2) / 3.5);
     const waveformList = new Array(offset * 2);
 
     for (let i = 0; i < offset; i++) {
@@ -289,85 +317,81 @@ class WaveformEffect {
   }
 
   drawBarWaveform(ctx: CanvasRenderingContext2D, datas: Uint8Array): void {
-    const len = datas.length;
-    const offset = Math.floor(len * 2);
-    const waveformList = new Array(offset);
-
-    for (let i = 0; i < offset; i++) {
-      waveformList[i] = i < len ? datas[len - 1 - i] : datas[i - len];
-    }
-
-    const marginX = 200;
-    const marginY = 400;
+    const marginX = 50;
+    const marginY = 300;
     const { width, height } = ctx.canvas;
     const xStart = marginX;
     const yStart = height - marginY;
-    // const xEnd = width - marginX;
     const yEnd = marginY;
+
+    // 只使用前60%的数据
+    const dataLength = Math.floor(datas.length * 0.6);
+    const effectiveData = datas.slice(0, dataLength);
 
     const meterWidth = 24;
     const gap = 4;
-    const meterNum = (width - marginX * 2) / (meterWidth + gap);
-    const step = Math.round(waveformList.length / meterNum);
+    const totalWidth = width - marginX * 2;
+    const meterNum = Math.floor(totalWidth / (meterWidth + gap));
+    const step = Math.round(effectiveData.length / meterNum);
     const capHeight = 5;
-    // const capStyle = "#fff";
-    const gradient = ctx.createLinearGradient(
-      xStart,
-      yEnd,
-      (width / 2 - marginX) * window.devicePixelRatio,
-      (height / 2 - marginY) * window.devicePixelRatio
-    );
-    gradient.addColorStop(1, "#0f0");
-    gradient.addColorStop(0.5, "#ff0");
-    gradient.addColorStop(0, "#f00");
+    const len = effectiveData.length;
 
-    ctx.beginPath();
+    // 直接使用当前颜色
+    const colorRight = `rgba(${this.r}, ${this.g}, ${this.b}, 0.6)`; // 从右往左，带透明度0.6
+    const color = `rgb(${this.r}, ${this.g}, ${this.b})`; // 从左往右，正常颜色
 
-    for (var i = 0; i < meterNum; i++) {
-      const value = Math.max(waveformList[i * step] * 3, 10);
+    // 先绘制从右往左（占据全部宽度，透明度0.4）
+    for (let i = 0; i < meterNum; i++) {
+      // 从数组末尾反向读取数据
+      const reverseIndex = meterNum - 1 - i;
+      const dataIndex = Math.min(reverseIndex * step, len - 1);
+      const value = Math.max(effectiveData[dataIndex] * 3, 10);
+      const x = xStart + i * (meterWidth + gap);
 
-      if (this.capYPositionArray.length < Math.round(meterNum)) {
+      if (this.capYPositionArray.length < meterNum) {
         this.capYPositionArray.push(value);
       }
-      // ctx.fillStyle = capStyle;
-      ctx.fillStyle = gradient;
-      if (value < this.capYPositionArray[i]) {
-        ctx.fillRect(
-          xStart + i * (meterWidth + gap),
-          yStart - --this.capYPositionArray[i],
-          meterWidth,
-          capHeight
-        );
-      } else {
-        ctx.fillRect(
-          xStart + i * (meterWidth + gap),
-          yStart - value,
-          meterWidth,
-          capHeight
-        );
-        this.capYPositionArray[i] = value;
-      }
 
-      ctx.fillStyle = gradient;
-      if (ctx.roundRect) {
-        // ! chrome99+
-        ctx.roundRect(
-          xStart + i * (meterWidth + gap),
-          yStart - value + capHeight,
-          meterWidth,
-          value,
-          2
-        );
-      } else {
-        ctx.rect(
-          xStart + i * (meterWidth + gap),
-          yStart - value + capHeight,
-          meterWidth,
-          value
-        );
-      }
+      ctx.fillStyle = colorRight;
+      
+      // 绘制 cap（圆角）
+      const capY = value < this.capYPositionArray[i] 
+        ? yStart - --this.capYPositionArray[i]
+        : (this.capYPositionArray[i] = value, yStart - value);
+      this.fillRoundRect(ctx, x, capY, meterWidth, capHeight, 8);
+
+      // 绘制条形（圆角）
+      this.fillRoundRect(
+        ctx,
+        x,
+        yStart - value + capHeight,
+        meterWidth,
+        value,
+        8
+      );
     }
-    ctx.fill();
+
+    // 再绘制从左往右（占据全部宽度，正常颜色）
+    for (let i = 0; i < meterNum; i++) {
+      const dataIndex = Math.min(i * step, len - 1);
+      const value = Math.max(effectiveData[dataIndex] * 3, 10);
+      const x = xStart + i * (meterWidth + gap);
+
+      ctx.fillStyle = color;
+      
+      // 绘制 cap（圆角）
+      this.fillRoundRect(ctx, x, yStart - value, meterWidth, capHeight, 8);
+
+      // 绘制条形（圆角）
+      this.fillRoundRect(
+        ctx,
+        x,
+        yStart - value + capHeight,
+        meterWidth,
+        value,
+        8
+      );
+    }
   }
 }
 

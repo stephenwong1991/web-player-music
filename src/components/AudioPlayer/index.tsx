@@ -9,7 +9,6 @@ import waveformEffect from "./effect";
 import lyric from "./lyric";
 import { loadImage } from "../../utils";
 import { ColorRGBObj } from "../../types";
-
 import musicInfo from "../../mock.json";
 
 enum MusicEffect {
@@ -18,6 +17,14 @@ enum MusicEffect {
   ARC_LINE_DOTTED = "arc-line-dotted",
   BAR = "bar",
 }
+
+// 效果名称的中文映射
+const effectNameMap: Record<MusicEffect, string> = {
+  [MusicEffect.ARC]: "圆环",
+  [MusicEffect.ARC_LINE]: "线条",
+  [MusicEffect.ARC_LINE_DOTTED]: "点线",
+  [MusicEffect.BAR]: "条形",
+};
 
 const draftArray: Uint8Array = new Uint8Array(256);
 const useStyles = makeStyles((theme) => ({
@@ -70,7 +77,7 @@ const AudioPlayer: React.FC = () => {
         return;
       }
       audioAnalyser.analyser!.getByteFrequencyData(audioAnalyser.buffer!);
-      renderCurrentTime(audioAnalyser.buffer!);
+      renderCurrentTime(audioAnalyser.buffer! as Uint8Array);
       loopIdRef.current = window.requestAnimationFrame(loopEffect);
     };
     const media = mediaRef.current!;
@@ -107,6 +114,7 @@ const AudioPlayer: React.FC = () => {
         renderCurrentTime(draftArray);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -115,7 +123,7 @@ const AudioPlayer: React.FC = () => {
       return;
     }
     audioAnalyser.analyser.getByteFrequencyData(audioAnalyser.buffer!);
-    renderCurrentTime(audioAnalyser.buffer!);
+    renderCurrentTime(audioAnalyser.buffer! as Uint8Array);
   }, [size, color]);
 
   useEffect(() => {
@@ -124,10 +132,10 @@ const AudioPlayer: React.FC = () => {
     }
     waveformEffect.initCapYPositionArray();
     audioAnalyser.analyser.getByteFrequencyData(audioAnalyser.buffer);
-    renderCurrentTime(audioAnalyser.buffer);
+    renderCurrentTime(audioAnalyser.buffer as Uint8Array);
   }, [effect]);
 
-  const renderCurrentTime = (datas: Uint8Array): void => {
+  const renderCurrentTime = (datas: Uint8Array<ArrayBufferLike>): void => {
     if (!ctxRef.current || !coverRef.current) {
       return;
     }
@@ -168,14 +176,14 @@ const AudioPlayer: React.FC = () => {
   return (
     <Fragment>
       <div className={`effects ${classes.root}`}>
-        {Object.entries(MusicEffect).map(([key, value]) => (
+        {Object.entries(MusicEffect).filter(([key]) => key !== 'ARC_LINE_DOTTED').map(([key, value]) => (
           <Button
             key={key}
             variant="contained"
             {...(effect === value ? { color: "primary" } : {})}
             onClick={() => setEffect(value)}
           >
-            {value}
+            {effectNameMap[value]}
           </Button>
         ))}
       </div>
@@ -186,7 +194,7 @@ const AudioPlayer: React.FC = () => {
           style={{ color: `rgb(${color.r}, ${color.g}, ${color.b})` }}
           onClick={() => setDisplayColorPicker((state) => !state)}
         >
-          wave color
+          改变颜色
         </Button>
         {displayColorPicker && (
           <SketchPicker
@@ -196,7 +204,9 @@ const AudioPlayer: React.FC = () => {
           />
         )}
       </div>
+      <div className="bg" style={{ backgroundImage: `url(${process.env.PUBLIC_URL + musicInfo.coverUrl})` }}></div>
       <canvas
+        className="canvas"
         ref={canvasRef}
         width={size.width * window.devicePixelRatio}
         height={size.height * window.devicePixelRatio}
@@ -218,7 +228,7 @@ const AudioPlayer: React.FC = () => {
         }}
       >
         <span style={{ fontSize: 50, fontWeight: "bold" }}>
-          Click on any area to play
+          点击任意区域播放
         </span>
       </Backdrop>
     </Fragment>
